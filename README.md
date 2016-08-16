@@ -10,6 +10,7 @@
         c. "focus out"
         d. "tab" to focus on the next input element(of type text or password)
         e. "delete" to delete the entire input
+        f. "backspace" to remove the character beside cursor
         
         Remarks::
         a. It supports even if we have added the input element dynamically
@@ -26,6 +27,7 @@
         c. "focus out"
         d. "tab" to focus on the next element(of type text or password)
         e. "delete" to delete the entire input
+        f. "backspace" to remove the character beside cursor
         
         Remarks::
         a. It supports even if we have added the input element dynamically
@@ -37,5 +39,6 @@ Reserved Words::
 2. focus out
 3. tab
 4. delete
+4. backspace
 
               

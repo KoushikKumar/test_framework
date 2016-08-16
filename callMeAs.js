@@ -76,17 +76,17 @@
             if ($(":focus").length > 0) {
                 focusedElement = $(":focus");
                 //focusedElement should be set only if the element is "input" and "type" is "text" or "password"
-                if(!(focusedElement[0].tagName === "INPUT" && focusedElement[0].type === "text" || focusedElement[0].type === "password")){
+                if (!(focusedElement[0].tagName === "INPUT" && (focusedElement[0].type === "text" || focusedElement[0].type === "password"))) {
                     focusedElement = null;
                 }
-            }  
+            }
 
             //check whether any input element is focused
             if (focusedElement) {
                 // focusOut from input element when the user says "focus out"
                 if (userInputWords[0] === "focus" && userInputWords[1] === "out") {
                     //trigger focus out event
-                    $(document).trigger("callMeAs_focusOut",[focusedElement]);
+                    $(document).trigger("callMeAs_focusOut", [focusedElement]);
                     focusedElement = null;
                     return;
                 }
@@ -99,8 +99,39 @@
                 }
                 
                 //when the user says "delete"
-                if(userInputWords[0] === "delete"){
+                if (userInputWords[0] === "delete") {
                     focusedElement.val('');
+                    return;
+                }
+                
+                //when the user says "backspace" then remove the character beside the cursor 
+                if (userInputWords[0] === "backspace") {
+                    var cursorPosition = 0;
+                    var inputFocusedElement = focusedElement.get(0);
+                    if (!inputFocusedElement) {
+                        return; // No (input) element found
+                    }
+                    
+                    //get cursor position
+                    if ('selectionStart' in inputFocusedElement) {
+                        // Standard-compliant browsers
+                        cursorPosition = inputFocusedElement.selectionStart;
+                    }
+                    
+                    if (cursorPosition > 0) {
+                        var presentValue = focusedElement.val();
+                        var modifiedValue; // this will be the value after removing the character
+                        //remove character
+                        if (cursorPosition === presentValue.length) {
+                            modifiedValue = presentValue.slice(0, cursorPosition - 1);
+                        } else {
+                            modifiedValue = presentValue.slice(0, cursorPosition - 1) + presentValue.slice(cursorPosition);
+                        }
+                        //set the modified value
+                        focusedElement.val(modifiedValue);
+                        //set the cursor to the cursorPosition - 1
+                        inputFocusedElement.setSelectionRange(cursorPosition - 1, cursorPosition - 1);
+                    }
                     return;
                 }
                 
