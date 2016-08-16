@@ -91,9 +91,16 @@
                     return;
                 }
                 
+                //when the user says "tab"
                 if (userInputWords[0] === "tab") {
                     focusedElement.next().focus();
                     focusedElement = $(":focus");
+                    return;
+                }
+                
+                //when the user says "delete"
+                if(userInputWords[0] === "delete"){
+                    focusedElement.val('');
                     return;
                 }
                 

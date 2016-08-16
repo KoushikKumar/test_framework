@@ -9,6 +9,7 @@
         b. When focused, whatever you speak will be filled in that input box
         c. "focus out"
         d. "tab" to focus on the next input element(of type text or password)
+        e. "delete" to delete the entire input
         
         Remarks::
         a. It supports even if we have added the input element dynamically
@@ -24,6 +25,7 @@
         b. When focused, whatever you speak will be filled as password
         c. "focus out"
         d. "tab" to focus on the next element(of type text or password)
+        e. "delete" to delete the entire input
         
         Remarks::
         a. It supports even if we have added the input element dynamically
@@ -34,5 +36,6 @@ Reserved Words::
 1. focus on
 2. focus out
 3. tab
+4. delete
 
               
