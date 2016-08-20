@@ -55,7 +55,42 @@
         
         //focusedElement is required to check hether any input box is focused when the user is speaking
         var focusedElement;
-
+        
+        //To keep track of older entries in the input box
+        var undoStack = [];
+        //To keep track of what all elements are undone
+        var redoStack = [];
+       
+        //functions which are used when the element is focused
+        var focusedFunctions = {
+            
+            //to get the cursor position when the "inputFocusedElement" is created
+            "cursorPosition": function (focusedElement) {
+                var inputFocusedElement = focusedElement.get(0);
+                if (!inputFocusedElement) {
+                    return; // No (input) element found
+                }
+                if ('selectionStart' in inputFocusedElement) {
+                    return inputFocusedElement.selectionStart;
+                }
+            },
+            
+            //populate "undoStack"
+            "updateUndoStack": function (focusedElement, inputValue, isDeleted, isBackspaced) {
+                var focusedElementClone = $.extend(true, {}, focusedElement);
+                var focusedElemProps = { 
+                                            "focusedElement": focusedElementClone,
+                                            "cursorPosition": this.cursorPosition(focusedElementClone),
+                                            "value": inputValue,
+                                            "isDeleted": isDeleted,
+                                            "isBackspaced": isBackspaced
+                                       };
+                undoStack.push(focusedElemProps);
+                //whenever undostack is populated, clear redoStack
+                redoStack = [];
+            }
+        };
+        
         recognition.continuous = true;
         recognition.interimResults = false;
 
@@ -83,6 +118,7 @@
 
             //check whether any input element is focused
             if (focusedElement) {
+                
                 // focusOut from input element when the user says "focus out"
                 if (userInputWords[0] === "focus" && userInputWords[1] === "out") {
                     //trigger focus out event
@@ -100,25 +136,20 @@
                 
                 //when the user says "delete"
                 if (userInputWords[0] === "delete") {
-                    focusedElement.val('');
+                    var emptyString = '';
+                    var currentValue = focusedElement.val();
+                    focusedElement.val(emptyString);
+                    //update "undoStack" with the current value
+                    focusedFunctions.updateUndoStack(focusedElement, currentValue, true);
                     return;
                 }
                 
                 //when the user says "backspace" then remove the character beside the cursor 
                 if (userInputWords[0] === "backspace") {
-                    var cursorPosition = 0;
-                    var inputFocusedElement = focusedElement.get(0);
-                    if (!inputFocusedElement) {
-                        return; // No (input) element found
-                    }
                     
-                    //get cursor position
-                    if ('selectionStart' in inputFocusedElement) {
-                        // Standard-compliant browsers
-                        cursorPosition = inputFocusedElement.selectionStart;
-                    }
+                    var cursorPosition = focusedFunctions.cursorPosition(focusedElement);
                     
-                    if (cursorPosition > 0) {
+                    if (cursorPosition && cursorPosition > 0) {
                         var presentValue = focusedElement.val();
                         var modifiedValue; // this will be the value after removing the character
                         //remove character
@@ -127,16 +158,78 @@
                         } else {
                             modifiedValue = presentValue.slice(0, cursorPosition - 1) + presentValue.slice(cursorPosition);
                         }
+                        
+                        
                         //set the modified value
                         focusedElement.val(modifiedValue);
+                        //update "undoStack" with the current value
+                        focusedFunctions.updateUndoStack(focusedElement, presentValue, false, true);
                         //set the cursor to the cursorPosition - 1
-                        inputFocusedElement.setSelectionRange(cursorPosition - 1, cursorPosition - 1);
+                        focusedElement.get(0).setSelectionRange(cursorPosition - 1, cursorPosition - 1);
                     }
                     return;
                 }
                 
+                //when the user says "undo" then input element should have the immediate old value
+                if (userInputWords[0] === "undo") {
+                    //last populated element of "undoStack"
+                    var latestInputVal = undoStack.pop();
+                    if (latestInputVal) {
+                        var focusedElement = latestInputVal.focusedElement;
+                        var value = latestInputVal.value;
+                        var cursorPosition = latestInputVal.cursorPosition;
+                        //populate redoStack
+                        redoStack.push(latestInputVal);
+                        if (!(latestInputVal.isDeleted || latestInputVal.isBackspaced)) {
+                            if (undoStack.length > 0) {
+                                var presentValue = focusedElement.val();
+                                //remove the stacked value from present value based on stacked cursor position
+                                var previousValue = presentValue.slice(0, cursorPosition) + presentValue.slice(cursorPosition + value.length);
+                                focusedElement.val(previousValue);
+                            } else {
+                                //initial state when the input elements are empty
+                                focusedElement.val('');
+                            }
+                        } else {
+                            //we are storing the values present in input elements, before the actual delete and backspace is applied
+                            focusedElement.val(value);
+                        }
+                    }
+                    return;
+                }
+                
+                //when the user says "redo" then input element should have the next latest value
+                if (userInputWords[0] === "redo") {
+                    //last populated element of "redoStack"
+                    var nextLatestInputVal = redoStack.pop();
+                    if (nextLatestInputVal) {
+                        var focusedElement = nextLatestInputVal.focusedElement;
+                        var value = nextLatestInputVal.value;
+                        var cursorPosition = nextLatestInputVal.cursorPosition;
+                        undoStack.push(nextLatestInputVal);
+                        if (nextLatestInputVal.isDeleted) {
+                            //the input value should be empty
+                            focusedElement.val('');
+                        } else if (nextLatestInputVal.isBackspaced) {
+                            var presentValue = focusedElement.val();
+                            //remove the backspaced character from the present value
+                            var latestValue = presentValue.slice(0, cursorPosition) + presentValue.slice(cursorPosition+1);
+                            focusedElement.val(latestValue);
+                        } else {
+                            var presentValue = focusedElement.val();
+                            var latestValue = presentValue+value;
+                            focusedElement.val(latestValue);
+                        }
+                    }
+                    return;
+                }
+                
+                var newValue = focusedElement.val() + userInput;
+                //populate "undoStack" with the userInput
+                focusedFunctions.updateUndoStack(focusedElement,userInput);
                 //Append to the existing value of input element
-                focusedElement.val(focusedElement.val() + userInput);
+                focusedElement.val(newValue);
+                
                 return;
             }
 
